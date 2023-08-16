@@ -1,0 +1,53 @@
+parameters:
+  - name: variable_group
+    type: string
+    default: 'api_test'
+
+jobs:
+- deployment: deploy_api
+  displayName: Deploy to API test
+  variables:
+  - group: '${{ parameters.variable_group }}'
+  environment:
+    name: test
+    resourceType: VirtualMachine
+    tags: api
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - powershell: write-host $(dir "$(Pipeline.Workspace)")
+        - task: PowerShell@2
+          displayName: 'Update App Settings'
+          inputs:
+            targetType: 'inline'    
+            script: |
+              $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
+              $applicationSettingsFileContents = (Get-Content '$(Pipeline.Workspace)\Binaries\HT.Overwatch.API\appsettings.json') 
+              
+              $applicationSettingsFileContents = $applicationSettingsFileContents -replace '"DefaultConnection": ".*"', '"DefaultConnection": "$(db_connection_string)"'
+              $applicationSettingsFileContents = $applicationSettingsFileContents -replace '"PortalURL": ".*"', '"PortalURL": "$(portal_url)"'
+              $applicationSettingsFileContents = $applicationSettingsFileContents -replace '"Environment": ".*"', '"Environment": "$(environment)"'
+              
+              [System.IO.File]::WriteAllLines('$(Pipeline.Workspace)\Binaries\HT.Overwatch.API\appsettings.json', $applicationSettingsFileContents, $Utf8NoBomEncoding)
+            
+            failOnStderr: true
+        - template: iis/stop_site/v1.yaml@templates
+          parameters:
+           siteName: $(iis_site_name)  
+        - task: PowerShell@2
+          displayName: 'Remove Old Application'
+          inputs:
+            targetType: 'inline'    
+            script: |
+              whoami
+              takeown /F $(wwwroot)\*
+              Get-ChildItem -Path $(wwwroot) -Include * | remove-Item -recurse 
+            failOnStderr: true
+        - template: /core/copy/v1.yaml@templates
+          parameters:
+            sourceDirectory: '$(Pipeline.Workspace)\Binaries\HT.Overwatch.API\'
+            destinationDirectory: '$(wwwroot)'
+        - template: iis/start_site/v1.yaml@templates
+          parameters:
+            siteName: $(iis_site_name) 

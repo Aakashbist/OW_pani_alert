@@ -1,0 +1,113 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - develop
+    - release/*
+    - feature/*
+
+pool:
+  name: 'Overwatch'
+
+variables:
+- group: 'api_test'
+
+resources:
+  repositories:
+  - repository: templates 
+    type: git
+    name: 'DevOps Templates/DevOps Templates'
+
+stages:
+- stage: restore_packages
+  displayName: Restore & Build Projects
+  jobs:
+  - job: cleanup_old_builds
+    displayName: Cleanup Old Builds
+    workspace:
+      clean: all
+    steps:
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: 'Get-Host'
+
+  - job: git_version
+    displayName: Run Git Version
+    steps:
+    - task: gittools.gitversion.gitversion-task.GitVersion@5
+      displayName: Git Version
+      inputs:
+        runtime: full
+        updateAssemblyInfo: true
+    - task: PowerShell@2
+      displayName: Output Version
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host $(GitVersion.AssemblySemVer)
+
+  - job: restore_build
+    dependsOn: 
+    - cleanup_old_builds
+    - git_version
+    displayName: Restore & Build
+    steps:
+    - template: nuget/restore/v1.yml@templates
+      parameters:
+        configPath: "./NuGet.config"
+    - template: dotnet/build/v1.yaml@templates
+      parameters:
+        projectName:  'API'
+        projectLocation: './HT.Overwatch.API/HT.Overwatch.API.csproj'
+
+- stage: test
+  displayName: Test
+  jobs:
+  - job: api
+    displayName: Application Logic Test
+    steps:
+    - template: dotnet/test/v1.yaml@templates
+      parameters:
+        projectLocation: './HT.Overwatch.Integration.Test/HT.Overwatch.Integration.Test.csproj'
+        projectName: 'Test'
+        connectionString: $(db_connection_string_integration_test) 
+        directoryName: 'HT.Overwatch.Integration.Test'     
+
+- stage: publish
+  displayName: Publish
+  condition: or(contains(variables['build.sourceBranch'], 'refs/heads/release/'), contains(variables['build.sourceBranch'], 'refs/heads/develop'))
+  jobs: 
+  - job: publish_overwatch_api
+    displayName: Publish API
+    steps:
+    - template: dotnet/publish/v1.yaml@templates
+      parameters:
+        projectLocation: './HT.Overwatch.API/HT.Overwatch.API.csproj'
+        projectName: 'API'
+
+- stage: artifact_upload
+  displayName: Upload Artifacts
+  condition: or(contains(variables['build.sourceBranch'], 'refs/heads/release/'), contains(variables['build.sourceBranch'], 'refs/heads/develop'))
+  jobs: 
+  - job: upload_api
+    displayName: API Artifacts
+    steps:
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.BinariesDirectory)\publish\'
+        ArtifactName: 'Binaries'
+        publishLocation: 'Container'
+  
+- stage: deploy_test
+  displayName: Deploy Test
+  condition: contains(variables['build.sourceBranch'], 'refs/heads/develop')
+  jobs:
+  - template: templates/deploy_api.yml
+    parameters:
+      variable_group: 'api_test'

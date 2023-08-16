@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Interfaces\Utilities\**" />
+    <EmbeddedResource Remove="Interfaces\Utilities\**" />
+    <None Remove="Interfaces\Utilities\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.2.0" />
+    <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="10.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HT.Overwatch.Contract\HT.Overwatch.Contract.csproj" />
+    <ProjectReference Include="..\HT.Overwatch.Domain\HT.Overwatch.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

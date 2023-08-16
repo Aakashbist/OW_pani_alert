@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="6.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.5" />
+    <PackageReference Include="System.Linq.Dynamic.Core" Version="1.2.18" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HT.WaterAlerts.Common\HT.WaterAlerts.Common.csproj" />
+    <ProjectReference Include="..\HT.WaterAlerts.Core\HT.WaterAlerts.Core.csproj" />
+  </ItemGroup>
+
+</Project>
